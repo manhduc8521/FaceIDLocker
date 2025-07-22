@@ -32,7 +32,6 @@ class FaceRegistrationScreenState extends State<FaceRegistrationScreen> {
   bool _isBusy = false;
   // UI State
   String? _selectedCabinetId;
-  String? _userName = "";
   String _instruction = 'Nhìn vào camera';
   bool _isScanningActive = false;
   int _captureCount = 0;
@@ -532,7 +531,6 @@ class FaceRegistrationScreenState extends State<FaceRegistrationScreen> {
       // Save face data
       final faceData = {
         'cabinet_id': _selectedCabinetId,
-        'user_name': _userName,
         'timestamp': DateTime.now().millisecondsSinceEpoch,
         'embedding': avgEmbedding,
         'image_count': _capturedImages.length,
@@ -991,18 +989,6 @@ class FaceRegistrationScreenState extends State<FaceRegistrationScreen> {
                     onChanged: (value) {
                       setState(() {
                         _selectedCabinetId = value;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    decoration: const InputDecoration(
-                      labelText: 'Nhập tên',
-                      border: OutlineInputBorder(),
-                    ),
-                    onChanged: (value) {
-                      setState(() {
-                        _userName = value;
                       });
                     },
                   ),
