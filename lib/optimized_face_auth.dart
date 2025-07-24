@@ -18,6 +18,21 @@ import 'services/usb_serial_helper.dart';
 /// Trạng thái xác thực
 enum AuthState { initial, detecting, processing, success, failure }
 
+String getAuthStateText(AuthState state) {
+  switch (state) {
+    case AuthState.initial:
+      return 'Chờ xác thực';
+    case AuthState.detecting:
+      return 'Đang nhận diện';
+    case AuthState.processing:
+      return 'Đang xử lý';
+    case AuthState.success:
+      return 'Thành công';
+    case AuthState.failure:
+      return 'Thất bại';
+  }
+}
+
 /// Lớp quản lý xác thực khuôn mặt với hiệu suất cao và độ chính xác tốt
 class OptimizedFaceAuth extends StatefulWidget {
   final Cabinet cabinet;
@@ -834,7 +849,7 @@ class _OptimizedFaceAuthState extends State<OptimizedFaceAuth> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'Trạng thái: ${_currentState.name}',
+                          'Trạng thái: ${getAuthStateText(_currentState)}',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: Colors.white,
