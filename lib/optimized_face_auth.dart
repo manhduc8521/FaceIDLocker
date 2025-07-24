@@ -94,17 +94,16 @@ class _OptimizedFaceAuthState extends State<OptimizedFaceAuth> {
     }
     qualityScore += sizeScore * 0.35;
 
-    // 2. Pose quality (30% weight) - PRACTICAL CHO LOCKER
+    // 2. Pose quality (giảm trọng số, nới lỏng góc) - FLEXIBLE FOR LOCKER
     double poseScore = 0.0;
-    final yawAngle = face.headEulerAngleY?.abs() ?? 37.0;
-    final rollAngle = face.headEulerAngleZ?.abs() ?? 37.0;
-    if (yawAngle <= 20.0 && rollAngle <= 20.0) {
-      // Practical angles
-      poseScore = 1.0 - ((yawAngle + rollAngle) / 40.0);
+    final yawAngle = face.headEulerAngleY?.abs() ?? 45.0;
+    final rollAngle = face.headEulerAngleZ?.abs() ?? 45.0;
+    if (yawAngle <= 32.0 && rollAngle <= 32.0) {
+      poseScore = 1.0 - ((yawAngle + rollAngle) / 64.0);
+    } else if (yawAngle <= 45.0 && rollAngle <= 45.0) {
+      poseScore = 0.5 - ((yawAngle + rollAngle - 64.0) / 64.0);
     }
-    qualityScore += poseScore * 0.30;
-
-    // 3. CENTER POSITION - BỎ (flexible positioning)
+    qualityScore += poseScore * 0.18;
 
     // 4. Landmarks quality (20% weight) - PRACTICAL CHO LOCKER
     double landmarkScore = 0.0;
