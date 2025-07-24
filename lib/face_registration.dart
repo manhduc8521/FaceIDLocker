@@ -22,6 +22,7 @@ class FaceRegistrationScreen extends StatefulWidget {
 }
 
 class FaceRegistrationScreenState extends State<FaceRegistrationScreen> {
+  int _selectedBoardAddress = 1;
   // Camera reference
   final GlobalKey<CameraViewState> _cameraKey = GlobalKey<CameraViewState>();
 
@@ -63,9 +64,9 @@ class FaceRegistrationScreenState extends State<FaceRegistrationScreen> {
   Timer?
   _qualityResetTimer; // Timer reset quality sau thời gian không hoạt động
 
-  final List<Cabinet> _cabinets = List.generate(
+  List<Cabinet> get _cabinets => List.generate(
     16,
-    (i) => Cabinet(id: 'Tủ ${i + 1}'),
+    (i) => Cabinet(id: 'Tủ ${i + 1}', boardAddress: _selectedBoardAddress),
   );
   @override
   void initState() {
@@ -538,13 +539,16 @@ class FaceRegistrationScreenState extends State<FaceRegistrationScreen> {
       };
 
       await prefs.setString(
-        'face_data_$_selectedCabinetId',
+        'face_data_${_selectedCabinetId}_khu$_selectedBoardAddress',
         jsonEncode(faceData),
       );
 
       // Save image paths for reference
       List<String> imagePaths = _capturedImages.map((img) => img.path).toList();
-      await prefs.setStringList('face_images_$_selectedCabinetId', imagePaths);
+      await prefs.setStringList(
+        'face_images_${_selectedCabinetId}_khu$_selectedBoardAddress',
+        imagePaths,
+      );
 
       // Final UI update
       setState(() {
@@ -971,6 +975,31 @@ class FaceRegistrationScreenState extends State<FaceRegistrationScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // Dropdown chọn khu
+                  DropdownButtonFormField<int>(
+                    decoration: const InputDecoration(
+                      labelText: 'Chọn khu',
+                      border: OutlineInputBorder(),
+                    ),
+                    value: _selectedBoardAddress,
+                    items: List.generate(
+                      32,
+                      (i) => DropdownMenuItem(
+                        value: i + 1,
+                        child: Text('Khu ${i + 1}'),
+                      ),
+                    ),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          _selectedBoardAddress = value;
+                          _selectedCabinetId = null;
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  // Dropdown chọn tủ
                   DropdownButtonFormField<String>(
                     decoration: const InputDecoration(
                       labelText: 'Chọn tủ',

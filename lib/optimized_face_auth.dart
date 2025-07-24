@@ -363,7 +363,7 @@ class _OptimizedFaceAuthState extends State<OptimizedFaceAuth> {
       } else {
         _handleAuthFailure(
           'Xác thực thất bại (MobileFaceNet)\n'
-          'Distance: ${matchResult.normalizedDistance.toStringAsFixed(3)} > 0.65',
+          'Distance: ${matchResult.normalizedDistance.toStringAsFixed(3)} > 0.67',
         );
       }
     } catch (e) {
@@ -384,7 +384,9 @@ class _OptimizedFaceAuthState extends State<OptimizedFaceAuth> {
 
   Future<List<double>?> _loadSavedFaceData() async {
     final prefs = await SharedPreferences.getInstance();
-    final savedData = prefs.getString('face_data_${widget.cabinet.id}');
+    final savedData = prefs.getString(
+      'face_data_${widget.cabinet.id}_khu${widget.cabinet.boardAddress}',
+    );
     if (savedData == null) return null;
 
     final faceData = jsonDecode(savedData);
@@ -414,9 +416,10 @@ class _OptimizedFaceAuthState extends State<OptimizedFaceAuth> {
     // Gửi lệnh mở tủ qua USB Serial
     List<String> parts = widget.cabinet.id.split(' ');
     int cabinetNumber = int.parse(parts.last);
+    int address = widget.cabinet.boardAddress;
     bool unlockSuccess = false;
     if (_usbHelper != null) {
-      unlockSuccess = await _usbHelper!.unlockE2(cabinetNumber);
+      unlockSuccess = await _usbHelper!.unlockE2(address, cabinetNumber);
     }
 
     // Show success dialog with unlock result
@@ -536,7 +539,7 @@ class _OptimizedFaceAuthState extends State<OptimizedFaceAuth> {
     );
 
     // Step 3: Single threshold decision (DeepFace research-based)
-    const double threshold = 0.65; // MobileFaceNet DeepFace threshold
+    const double threshold = 0.67; // MobileFaceNet DeepFace threshold
 
     bool isMatch = normalizedDistance <= threshold;
 

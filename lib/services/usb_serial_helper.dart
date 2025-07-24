@@ -28,8 +28,9 @@ class UsbSerialHelper {
     UsbDevice? targetDevice;
     try {
       targetDevice = devices.firstWhere(
-        (device) => (device.productName?.toUpperCase().contains('FT232') ?? false)
-                  || (device.productName?.toUpperCase().contains('FTDI') ?? false),
+        (device) =>
+            (device.productName?.toUpperCase().contains('FT232') ?? false) ||
+            (device.productName?.toUpperCase().contains('FTDI') ?? false),
       );
     } catch (e) {
       return false;
@@ -65,87 +66,79 @@ class UsbSerialHelper {
     }
 
     print("🔄 Thiết lập listener...");
-    _subscription = stream.listen(
-      (Uint8List data) {
-        print("📥 Nhận: ${data.map((e) => e.toRadixString(16).padLeft(2, '0')).join(' ')}");
-        
-        if (_isProcessingBuffer) return; // Tránh xử lý chồng chéo
-        _isProcessingBuffer = true;
-        
-        try {
-          _buffer.addAll(data);
-          
-          // Xử lý buffer khi có đủ dữ liệu
-          while (_buffer.length >= 8) {
-            // Tìm điểm bắt đầu tin nhắn
-            int startIdx = -1;
-            for (int i = 0; i <= _buffer.length - 8; i++) {
-              if (_buffer[i] == 0xAA && _buffer[i+1] == 0xA1 && 
-                  _buffer[i+2] == 0x0F && _buffer[i+3] == 0xE2 && _buffer[i+4] == 0x02) {
-                startIdx = i;
-                break;
-              }
-            }
-            
-            if (startIdx == -1) {
-              // Không tìm thấy header hợp lệ, xóa byte đầu tiên
-              _buffer.removeAt(0);
-              break;
-            }
-            
-            // Kiểm tra đủ dữ liệu cho một tin nhắn hoàn chỉnh
-            if (startIdx + 8 <= _buffer.length) {
-              List<int> message = _buffer.sublist(startIdx, startIdx + 8);
-              
-              // Kiểm tra checksum
-              int calculatedChecksum = checksum(message.sublist(0, 7));
-              if (calculatedChecksum == message[7]) {
-                int status = message[5];
-                int channel = message[6];
-                print("Trạng thái: 0x${status.toRadixString(16)}, Kênh: $channel, Checksum: hợp lệ");
-                
-                bool success = (status == 0x01);
-                print(success ? "✅ Mở tủ thành công" : "❌ Mở tủ thất bại");
-                
-                // Hoàn thành thao tác nếu đang chờ phản hồi
-                if (_responseCompleter != null && !_responseCompleter!.isCompleted) {
-                  _responseTimeout?.cancel();
-                  _responseCompleter!.complete(success);
-                }
-              }
-              
-              // Xóa dữ liệu đã xử lý
-              _buffer.removeRange(0, startIdx + 8);
-            } else {
-              // Chưa đủ dữ liệu cho tin nhắn hoàn chỉnh
+    _subscription = stream.listen((Uint8List data) {
+      print(
+        "📥 Nhận: ${data.map((e) => e.toRadixString(16).padLeft(2, '0')).join(' ')}",
+      );
+
+      if (_isProcessingBuffer) return; // Tránh xử lý chồng chéo
+      _isProcessingBuffer = true;
+
+      try {
+        _buffer.addAll(data);
+
+        // Xử lý buffer khi có đủ dữ liệu
+        while (_buffer.length >= 8) {
+          // Tìm điểm bắt đầu tin nhắn
+          int startIdx = -1;
+          for (int i = 0; i <= _buffer.length - 8; i++) {
+            if (_buffer[i] == 0xAA &&
+                _buffer[i + 1] == 0xA1 &&
+                (_buffer[i + 2] >= 1 && _buffer[i + 2] <= 32) &&
+                _buffer[i + 3] == 0xE2 &&
+                _buffer[i + 4] == 0x02) {
+              startIdx = i;
               break;
             }
           }
-          
-          // Kiểm soát kích thước buffer
-          if (_buffer.length > 128) {
-            print("🗑️ Buffer quá lớn, cắt bớt còn 64 bytes");
-            _buffer = _buffer.sublist(_buffer.length - 64);
+
+          if (startIdx == -1) {
+            // Không tìm thấy header hợp lệ, xóa byte đầu tiên
+            _buffer.removeAt(0);
+            break;
           }
-        } finally {
-          _isProcessingBuffer = false;
+
+          // Kiểm tra đủ dữ liệu cho một tin nhắn hoàn chỉnh
+          if (startIdx + 8 <= _buffer.length) {
+            List<int> message = _buffer.sublist(startIdx, startIdx + 8);
+
+            // Kiểm tra checksum
+            int calculatedChecksum = checksum(message.sublist(0, 7));
+            if (calculatedChecksum == message[7]) {
+              int status = message[5];
+              int channel = message[6];
+              print(
+                "Trạng thái: 0x${status.toRadixString(16)}, Kênh: $channel, Checksum: hợp lệ",
+              );
+
+              bool success = (status == 0x01);
+              print(success ? "✅ Mở tủ thành công" : "❌ Mở tủ thất bại");
+
+              // Hoàn thành thao tác nếu đang chờ phản hồi
+              if (_responseCompleter != null &&
+                  !_responseCompleter!.isCompleted) {
+                _responseTimeout?.cancel();
+                _responseCompleter!.complete(success);
+              }
+            }
+
+            // Xóa dữ liệu đã xử lý
+            _buffer.removeRange(0, startIdx + 8);
+          } else {
+            // Chưa đủ dữ liệu cho tin nhắn hoàn chỉnh
+            break;
+          }
         }
-      },
-      onError: (error) {
-        print("❌ Lỗi stream: $error");
-        if (_responseCompleter != null && !_responseCompleter!.isCompleted) {
-          _responseTimeout?.cancel();
-          _responseCompleter!.complete(false);
+
+        // Kiểm soát kích thước buffer
+        if (_buffer.length > 128) {
+          print("🗑️ Buffer quá lớn, cắt bớt còn 64 bytes");
+          _buffer = _buffer.sublist(_buffer.length - 64);
         }
-      },
-      onDone: () {
-        print("🔚 Stream đã đóng");
-        if (_responseCompleter != null && !_responseCompleter!.isCompleted) {
-          _responseTimeout?.cancel();
-          _responseCompleter!.complete(false);
-        }
-      },
-    );
+      } finally {
+        _isProcessingBuffer = false;
+      }
+    });
     print("✅ Đã thiết lập listener thành công");
   }
 
@@ -157,7 +150,7 @@ class UsbSerialHelper {
     return checksum;
   }
 
-  Future<bool> unlockE2(int Ch) async {
+  Future<bool> unlockE2(int address, int Ch) async {
     if (_port == null) return false;
 
     // Đảm bảo listener đã được thiết lập
@@ -167,7 +160,7 @@ class UsbSerialHelper {
 
     // Tạo completer mới cho lệnh này
     _responseCompleter = Completer<bool>();
-    
+
     // Thiết lập timeout
     _responseTimeout = Timer(const Duration(seconds: 5), () {
       if (_responseCompleter != null && !_responseCompleter!.isCompleted) {
@@ -177,16 +170,18 @@ class UsbSerialHelper {
     });
 
     // Chuẩn bị và gửi lệnh
-    List<int> data = [0xAA, 0xA1, 0x0F, 0xE2, 0x01, Ch, 0x00];
+    List<int> data = [0xAA, 0xA1, address, 0xE2, 0x01, Ch, 0x00];
     data[6] = checksum(data);
-    
-    print("📤 Gửi lệnh: ${data.map((e) => e.toRadixString(16).padLeft(2, '0')).join(' ')}");
+
+    print(
+      "📤 Gửi lệnh: ${data.map((e) => e.toRadixString(16).padLeft(2, '0')).join(' ')}",
+    );
     await sendData(data);
 
     // Chờ phản hồi từ listener toàn cục
     return await _responseCompleter!.future;
   }
-  
+
   // Đã xóa phương thức checkE2response() vì đã có _setupListener() xử lý phản hồi
 
   /// Gửi dữ liệu tới thiết bị USB

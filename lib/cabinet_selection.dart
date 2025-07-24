@@ -3,29 +3,34 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class Cabinet {
   final String id;
+  final int boardAddress;
 
-  Cabinet({required this.id});
+  Cabinet({required this.id, required this.boardAddress});
 }
 
-class CabinetSelectionScreen extends StatelessWidget {
+class CabinetSelectionScreen extends StatefulWidget {
   final Function(Cabinet) onCabinetSelected;
 
   const CabinetSelectionScreen({super.key, required this.onCabinetSelected});
 
   @override
+  State<CabinetSelectionScreen> createState() => _CabinetSelectionScreenState();
+}
+
+class _CabinetSelectionScreenState extends State<CabinetSelectionScreen> {
+  int _selectedBoardAddress = 1;
+
+  @override
   Widget build(BuildContext context) {
-    // Tạo danh sách tủ chỉ với số tủ, không có tầng
     final cabinets = List.generate(
       16,
-      (i) => Cabinet(id: 'Tủ ${i + 1}'),
+      (i) => Cabinet(id: 'Tủ ${i + 1}', boardAddress: _selectedBoardAddress),
     );
-
-    // final size = MediaQuery.of(context).size;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Chọn tủ',
+          'Chọn khu & tủ',
           style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.blueAccent,
@@ -33,56 +38,94 @@ class CabinetSelectionScreen extends StatelessWidget {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: GridView.builder(
-          itemCount: cabinets.length,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 4,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 0.6666666667,
-          ),
-          itemBuilder: (context, index) {
-            final cabinet = cabinets[index];
-            return GestureDetector(
-              onTap: () => _checkAndOpenCabinet(context, cabinet),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.10),
-                      blurRadius: 8,
-                      offset: const Offset(2, 4),
-                    ),
-                  ],
-                  border: Border.all(color: Colors.blueAccent, width: 1),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                const Text(
+                  'Chọn khu: ',
+                  style: TextStyle(fontSize: 25, fontWeight: FontWeight.w600),
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.lock, size: 48, color: Colors.blueAccent),
-                    const SizedBox(height: 12),
-                    Text(
-                      cabinet.id,
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black87,
+                const SizedBox(width: 16),
+                DropdownButton<int>(
+                  value: _selectedBoardAddress,
+                  items: List.generate(
+                    32,
+                    (i) =>
+                        DropdownMenuItem(value: i + 1, child: Text('${i + 1}')),
+                  ),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() {
+                        _selectedBoardAddress = value;
+                      });
+                    }
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Expanded(
+              child: GridView.builder(
+                itemCount: cabinets.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 4,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 0.75,
+                ),
+                itemBuilder: (context, index) {
+                  final cabinet = cabinets[index];
+                  return GestureDetector(
+                    onTap: () => _checkAndOpenCabinet(context, cabinet),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.10),
+                            blurRadius: 8,
+                            offset: const Offset(2, 4),
+                          ),
+                        ],
+                        border: Border.all(color: Colors.blueAccent, width: 1),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.lock,
+                            size: 48,
+                            color: Colors.blueAccent,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            cabinet.id,
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
-            );
-          },
+            ),
+          ],
         ),
       ),
     );
   }
+
   Future _checkAndOpenCabinet(BuildContext context, Cabinet cabinet) async {
     final prefs = await SharedPreferences.getInstance();
-    final faceData = prefs.getString('face_data_${cabinet.id}');
+    final faceData = prefs.getString(
+      'face_data_${cabinet.id}_khu${cabinet.boardAddress}',
+    );
     if (faceData == null) {
       if (!context.mounted) return;
       showDialog(
@@ -90,7 +133,9 @@ class CabinetSelectionScreen extends StatelessWidget {
         builder: (BuildContext context) {
           return AlertDialog(
             title: const Text('Thông báo'),
-            content: Text('${cabinet.id} chưa được đăng ký khuôn mặt!'),
+            content: Text(
+              '${cabinet.id} (Khu ${cabinet.boardAddress}) chưa được đăng ký khuôn mặt!',
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
@@ -102,6 +147,6 @@ class CabinetSelectionScreen extends StatelessWidget {
       );
       return;
     }
-    onCabinetSelected(cabinet);
+    widget.onCabinetSelected(cabinet);
   }
 }
