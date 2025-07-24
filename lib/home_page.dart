@@ -3,7 +3,7 @@ import 'package:camera/camera.dart';
 import 'cabinet_selection.dart';
 import 'optimized_face_auth.dart';
 import 'services/model_manager.dart';
-import 'management/session_check.dart';
+import 'management/login.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -25,7 +25,7 @@ class HomePageState extends State<HomePage> {
   void _loadCameras() {
     // Lấy cameras từ Model Manager
     cameras = AIModelManager.instance.cameras;
-    
+
     if (cameras == null || cameras!.isEmpty) {
       // Polling liên tục thay vì chỉ 1 lần
       _pollForCameras();
@@ -37,10 +37,10 @@ class HomePageState extends State<HomePage> {
     while ((cameras == null || cameras!.isEmpty) && attempts < 20 && mounted) {
       await Future.delayed(const Duration(milliseconds: 500));
       attempts++;
-      
+
       if (mounted) {
         final newCameras = AIModelManager.instance.cameras;
-        
+
         if (newCameras != null && newCameras.isNotEmpty) {
           setState(() {
             cameras = newCameras;
@@ -52,17 +52,15 @@ class HomePageState extends State<HomePage> {
   }
 
   void _onItemTapped(int index) {
-    if (index == 1) { // Registration tab
-      // Navigate to session check which will handle login/registration
+    if (index == 1) {
       Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => SessionCheckWidget(cameras: cameras!),
-        ),
+        MaterialPageRoute(builder: (context) => LoginScreen(cameras: cameras!)),
       );
     } else {
       setState(() => _selectedIndex = index);
     }
   }
+
   // Khi chọn tủ, push màn hình xác thực khuôn mặt
   void _openFaceAuthScreen(BuildContext context, Cabinet cabinet) {
     Navigator.push(
@@ -72,6 +70,7 @@ class HomePageState extends State<HomePage> {
       ),
     );
   }
+
   @override
   Widget build(BuildContext context) {
     // Kiểm tra nếu cameras chưa sẵn sàng
@@ -91,9 +90,11 @@ class HomePageState extends State<HomePage> {
     }
 
     final screens = [
-      CabinetSelectionScreen(onCabinetSelected: (cabinet) {
-        _openFaceAuthScreen(context, cabinet);
-      }),
+      CabinetSelectionScreen(
+        onCabinetSelected: (cabinet) {
+          _openFaceAuthScreen(context, cabinet);
+        },
+      ),
     ];
 
     return Scaffold(
