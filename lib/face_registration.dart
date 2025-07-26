@@ -79,24 +79,20 @@ class FaceRegistrationScreenState extends State<FaceRegistrationScreen> {
 
   /// Khởi tạo Face Detector
   Future<void> _initFaceDetector() async {
-    try {
-      _faceDetector = FaceDetector(
-        options: FaceDetectorOptions(
-          enableContours: false,
-          enableClassification: false,
-          minFaceSize: _minFaceSize,
-          performanceMode: FaceDetectorMode.accurate,
-          enableLandmarks: false,
-        ),
-      );
+    _faceDetector = FaceDetector(
+      options: FaceDetectorOptions(
+        enableContours: false,
+        enableClassification: false,
+        minFaceSize: _minFaceSize,
+        performanceMode: FaceDetectorMode.accurate,
+        enableLandmarks: false,
+      ),
+    );
 
-      if (mounted) {
-        setState(() {
-          _isFaceDetectorInitialized = true;
-        });
-      }
-    } catch (e) {
-      // Error initializing Face Detector
+    if (mounted) {
+      setState(() {
+        _isFaceDetectorInitialized = true;
+      });
     }
   }
 
@@ -129,10 +125,8 @@ class FaceRegistrationScreenState extends State<FaceRegistrationScreen> {
 
           // Quality-based instruction updates - GIẢM XUỐNG 75% (không cần center position)
           if (qualityScore >= 0.75) {
-            // Từ 0.8 → 0.75 (75%)
             _consecutiveGoodFrames++;
 
-            // Track best face trong window
             if (qualityScore > _bestQualityScore) {
               _bestFace = face;
               _bestQualityScore = qualityScore;
@@ -579,8 +573,7 @@ class FaceRegistrationScreenState extends State<FaceRegistrationScreen> {
         // Use the first detected face for embedding extraction
         final face = faces.first;
         final faceBox = face.boundingBox;
-        // Extract face embedding using FaceEmbedder
-        // Đảm bảo models đã sẵn sàng
+
         await AIModelManager.instance.ensureModelsReady();
 
         if (_faceEmbedder != null) {
@@ -605,7 +598,7 @@ class FaceRegistrationScreenState extends State<FaceRegistrationScreen> {
         throw Exception('No face detected in image ${imageIndex + 1}');
       }
     } catch (e) {
-      rethrow; // Re-throw the original error instead of using placeholder
+      rethrow;
     }
   }
 
@@ -627,27 +620,28 @@ class FaceRegistrationScreenState extends State<FaceRegistrationScreen> {
       final faceRatio = faceBox.width / imageSize.width;
 
       // Nới lỏng quality requirements cho registration 75%
-      if (faceRatio < 0.15 || faceRatio > 0.8)
-        return false; // Nới lỏng: 0.18-0.75 → 0.15-0.8
+      if (faceRatio < 0.15 || faceRatio > 0.8) {
+        return false;
+      }
 
-      // Head pose validation với nới lỏng thresholds
       if (optimalFace.headEulerAngleY != null &&
-          optimalFace.headEulerAngleY!.abs() > 20.0)
-        return false; // Nới lỏng: 15.0 → 20.0
-      if (optimalFace.headEulerAngleZ != null &&
-          optimalFace.headEulerAngleZ!.abs() > 18.0)
-        return false; // Nới lỏng: 12.0 → 18.0
+          optimalFace.headEulerAngleY!.abs() > 20.0) {
+        return false;
+      }
 
-      // BỎ CENTER POSITION VALIDATION HOÀN TOÀN
-      // Không cần kiểm tra vị trí center nữa
+      if (optimalFace.headEulerAngleZ != null &&
+          optimalFace.headEulerAngleZ!.abs() > 18.0) {
+        return false;
+      }
 
       // Landmarks validation - NỚI LỎNG cho 75%
       if (optimalFace.landmarks.isEmpty) return false;
 
       // Require basic landmarks for 75% quality (nới lỏng từ 80%)
       if (!optimalFace.landmarks.containsKey(FaceLandmarkType.leftEye) ||
-          !optimalFace.landmarks.containsKey(FaceLandmarkType.rightEye))
+          !optimalFace.landmarks.containsKey(FaceLandmarkType.rightEye)) {
         return false;
+      }
 
       // Embedding validation với optimal face - NỚI LỎNG 75%
       await AIModelManager.instance.ensureModelsReady();
@@ -669,9 +663,10 @@ class FaceRegistrationScreenState extends State<FaceRegistrationScreen> {
             .reduce((a, b) => a + b);
         if (embeddingMagnitude < 0.2) return false; // Nới lỏng: 0.25 → 0.2
 
-        if (embedding.any((e) => e.isNaN) || embedding.any((e) => e.isInfinite))
+        if (embedding.any((e) => e.isNaN) ||
+            embedding.any((e) => e.isInfinite)) {
           return false;
-
+        }
         // Validate embedding variance for quality - NỚI LỎNG 75%
         final mean = embedding.reduce((a, b) => a + b) / embedding.length;
         final variance =
@@ -714,20 +709,12 @@ class FaceRegistrationScreenState extends State<FaceRegistrationScreen> {
 
     // 2. Pose quality (30% weight) - Góc nghiêng đầu - GIẢM đến 75%
     double poseScore = 0.0;
-    final yawAngle =
-        face.headEulerAngleY?.abs() ?? 30.0; // Nới lỏng: 25.0 → 30.0
-    final rollAngle =
-        face.headEulerAngleZ?.abs() ?? 30.0; // Nới lỏng: 25.0 → 30.0
+    final yawAngle = face.headEulerAngleY?.abs() ?? 30.0;
+    final rollAngle = face.headEulerAngleZ?.abs() ?? 30.0;
     if (yawAngle <= 18.0 && rollAngle <= 18.0) {
-      // Nới lỏng: 12.0 → 18.0
-      // Nới lỏng pose requirements cho registration 75%
-      poseScore =
-          1.0 - ((yawAngle + rollAngle) / 36.0); // Nới lỏng: 24.0 → 36.0
+      poseScore = 1.0 - ((yawAngle + rollAngle) / 36.0);
     }
     qualityScore += poseScore * 0.30; // Giữ nguyên trọng số
-
-    // 3. CENTER POSITION - BỎ HOÀN TOÀN (0% weight)
-    // Không cần đặt khuôn mặt ở giữa khung hình nữa
 
     // 4. Landmarks quality (20% weight) - GIẢM yêu cầu đến 75%
     double landmarkScore = 0.0;

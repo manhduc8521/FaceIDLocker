@@ -182,8 +182,6 @@ class UsbSerialHelper {
     return await _responseCompleter!.future;
   }
 
-  // Đã xóa phương thức checkE2response() vì đã có _setupListener() xử lý phản hồi
-
   /// Gửi dữ liệu tới thiết bị USB
   Future<void> sendData(List<int> data) async {
     if (_port != null) {

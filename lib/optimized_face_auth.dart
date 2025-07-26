@@ -151,23 +151,19 @@ class _OptimizedFaceAuthState extends State<OptimizedFaceAuth> {
 
   /// Khởi tạo Face Detector
   Future<void> _initFaceDetector() async {
-    try {
-      _faceDetector = FaceDetector(
-        options: FaceDetectorOptions(
-          enableContours: false,
-          enableClassification: false,
-          minFaceSize: _minFaceSize,
-          performanceMode: FaceDetectorMode.accurate,
-          enableLandmarks: false,
-        ),
-      );
-      if (mounted && !_isDisposed) {
-        setState(() {
-          _isFaceDetectorInitialized = true;
-        });
-      }
-    } catch (e) {
-      // Error initializing Face Detector
+    _faceDetector = FaceDetector(
+      options: FaceDetectorOptions(
+        enableContours: false,
+        enableClassification: false,
+        minFaceSize: _minFaceSize,
+        performanceMode: FaceDetectorMode.accurate,
+        enableLandmarks: false,
+      ),
+    );
+    if (mounted && !_isDisposed) {
+      setState(() {
+        _isFaceDetectorInitialized = true;
+      });
     }
   }
 
@@ -706,21 +702,13 @@ class _OptimizedFaceAuthState extends State<OptimizedFaceAuth> {
     // Stop authentication if running
     _isAuthenticating = false;
     // Giải phóng các detector
-    try {
+
+    _faceDetector.close();
+
+    if (_isFaceDetectorInitialized) {
       _faceDetector.close();
-    } catch (e) {
-      // Error disposing Face Detector
     }
 
-    // Don't dispose models - they're managed by singleton
-
-    try {
-      if (_isFaceDetectorInitialized) {
-        _faceDetector.close();
-      }
-    } catch (e) {
-      // Error disposing FaceDetector
-    }
     super.dispose();
   }
 
